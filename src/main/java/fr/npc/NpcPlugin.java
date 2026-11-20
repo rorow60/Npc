@@ -136,3 +136,11 @@ public class NpcPlugin extends JavaPlugin implements Listener {
     private void openEditor(Player p, Villager v) {
         Editor holder = new Editor(v.getUniqueId());
         Inventory inv = Bukkit.createInventory(holder, 27, Component.text("
+    @EventHandler
+    public void onDamage(EntityDamageEvent e) {
+        if (isNpc(e.getEntity()) && e.getCause() != EntityDamageEvent.DamageCause.KILL
+                && e.getCause() != EntityDamageEvent.DamageCause.VOID) {
+            e.setCancelled(true);
+        }
+    }
+}
