@@ -1,0 +1,13 @@
+name: NpcPlugin
+version: 1.0.0
+main: fr.npc.NpcPlugin
+api-version: '1.21'
+description: Cree et edite des PNJ villageois (admin uniquement)
+commands:
+  npc:
+    description: Cree un PNJ villageois avec un metier
+    usage: /npc <metier>
+permissions:
+  npc.admin:
+    description: Creer et editer les PNJ
+    default: op
