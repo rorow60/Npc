@@ -9,8 +9,8 @@
   <packaging>jar</packaging>
 
   <properties>
-    <maven.compiler.source>21</maven.compiler.source>
-    <maven.compiler.target>21</maven.compiler.target>
+    <maven.compiler.source>25</maven.compiler.source>
+    <maven.compiler.target>25</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
@@ -25,8 +25,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <!-- Remplace par la version de ton serveur (ex: 26.x.build-SNAPSHOT ou 1.21.x-R0.1-SNAPSHOT) -->
-      <version>1.21.8-R0.1-SNAPSHOT</version>
+      <version>[26.3.build,)</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>
