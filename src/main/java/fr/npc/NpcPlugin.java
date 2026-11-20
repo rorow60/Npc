@@ -135,7 +135,111 @@ public class NpcPlugin extends JavaPlugin implements Listener {
 
     private void openEditor(Player p, Villager v) {
         Editor holder = new Editor(v.getUniqueId());
-        Inventory inv = Bukkit.createInventory(holder, 27, Component.text("
+        Inventory inv = Bukkit.createInventory(holder, 27, Component.text("Editeur de PNJ"));
+        holder.inv = inv;
+
+        int slot = 0;
+        for (Map.Entry<String, Material> en : ICONS.entrySet()) {
+            boolean current = v.getProfession().key().value().equals(en.getKey());
+            inv.setItem(slot++, item(en.getValue(), "Metier : " + en.getKey(),
+                    current ? "Metier actuel" : "Clique pour appliquer"));
+        }
+        inv.setItem(SLOT_RENAME, item(Material.NAME_TAG, "Renommer", "Ecris le nouveau nom dans le chat"));
+        inv.setItem(SLOT_TP, item(Material.ENDER_PEARL, "Teleporter ici", "Amene le PNJ a ta position"));
+        inv.setItem(SLOT_BABY, item(Material.EGG, v.isAdult() ? "Passer en bebe" : "Passer en adulte", ""));
+        inv.setItem(SLOT_NAME, item(Material.SPYGLASS,
+                v.isCustomNameVisible() ? "Cacher le nom" : "Afficher le nom", ""));
+        inv.setItem(SLOT_REMOVE, item(Material.TNT, "Supprimer le PNJ", "Action definitive"));
+        p.openInventory(inv);
+    }
+
+    private ItemStack item(Material m, String name, String lore) {
+        ItemStack it = new ItemStack(m);
+        ItemMeta meta = it.getItemMeta();
+        meta.displayName(Component.text(name, NamedTextColor.YELLOW));
+        if (!lore.isEmpty()) meta.lore(List.of(Component.text(lore, NamedTextColor.GRAY)));
+        it.setItemMeta(meta);
+        return it;
+                      }
+        @EventHandler
+    public void onClick(InventoryClickEvent e) {
+        if (!(e.getInventory().getHolder() instanceof Editor holder)) return;
+        e.setCancelled(true);
+        if (!(e.getWhoClicked() instanceof Player p)) return;
+        if (!p.hasPermission(PERM)) { p.closeInventory(); return; }
+        if (e.getClickedInventory() != e.getInventory()) return;
+
+        Entity ent = Bukkit.getEntity(holder.npc);
+        if (!(ent instanceof Villager v) || !isNpc(v)) { p.closeInventory(); return; }
+
+        int s = e.getRawSlot();
+        if (s >= 0 && s < ICONS.size()) {
+            String key = new ArrayList<>(ICONS.keySet()).get(s);
+            Villager.Profession prof = Registry.VILLAGER_PROFESSION.get(NamespacedKey.minecraft(key));
+            if (prof != null) {
+                v.setProfession(prof);
+                p.sendMessage(Component.text("Metier change : " + key, NamedTextColor.GREEN));
+                openEditor(p, v);
+            }
+            return;
+        }
+        switch (s) {
+            case SLOT_RENAME -> {
+                renaming.put(p.getUniqueId(), v.getUniqueId());
+                p.closeInventory();
+                p.sendMessage(Component.text("Ecris le nouveau nom dans le chat (codes & ok) ou 'cancel'.", NamedTextColor.YELLOW));
+            }
+            case SLOT_TP -> {
+                v.teleport(p.getLocation());
+                p.sendMessage(Component.text("PNJ teleporte.", NamedTextColor.GREEN));
+            }
+            case SLOT_BABY -> {
+                if (v.isAdult()) v.setBaby(); else v.setAdult();
+                openEditor(p, v);
+            }
+            case SLOT_NAME -> {
+                v.setCustomNameVisible(!v.isCustomNameVisible());
+                openEditor(p, v);
+            }
+            case SLOT_REMOVE -> {
+                v.remove();
+                p.closeInventory();
+                p.sendMessage(Component.text("PNJ supprime.", NamedTextColor.RED));
+            }
+            default -> { }
+        }
+    }
+
+    @EventHandler
+    public void onDrag(InventoryDragEvent e) {
+        if (e.getInventory().getHolder() instanceof Editor) e.setCancelled(true);
+    }
+
+    @EventHandler
+    public void onChat(AsyncChatEvent e) {
+        Player p = e.getPlayer();
+        UUID npcId = renaming.remove(p.getUniqueId());
+        if (npcId == null) return;
+        e.setCancelled(true);
+        String text = PlainTextComponentSerializer.plainText().serialize(e.message());
+        Bukkit.getScheduler().runTask(this, () -> {
+            if (text.equalsIgnoreCase("cancel")) {
+                p.sendMessage(Component.text("Annule.", NamedTextColor.GRAY));
+                return;
+            }
+            Entity ent = Bukkit.getEntity(npcId);
+            if (ent instanceof Villager v && isNpc(v) && p.hasPermission(PERM)) {
+                v.customName(LegacyComponentSerializer.legacyAmpersand().deserialize(text));
+                p.sendMessage(Component.text("Nom modifie.", NamedTextColor.GREEN));
+            }
+        });
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        renaming.remove(e.getPlayer().getUniqueId());
+    }
+
     @EventHandler
     public void onDamage(EntityDamageEvent e) {
         if (isNpc(e.getEntity()) && e.getCause() != EntityDamageEvent.DamageCause.KILL
